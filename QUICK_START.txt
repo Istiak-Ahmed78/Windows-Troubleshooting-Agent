@@ -1,0 +1,179 @@
+╔═════════════════════════════════════════════════════════════════════╗
+║       AI PC TROUBLESHOOTING AGENT - QUICK START GUIDE               ║
+╚═════════════════════════════════════════════════════════════════════╝
+
+📋 WHAT IS THIS?
+────────────────
+An intelligent Windows troubleshooting agent that diagnoses PC issues
+and provides smart solutions through a chat interface.
+
+🚀 QUICK INSTALLATION
+──────────────────────
+
+Windows Users - Option 1 (Easiest):
+  1. Double-click: run.bat
+  2. Wait for dependencies to install
+  3. Application launches automatically
+
+Windows Users - Option 2 (Manual):
+  1. Open Command Prompt
+  2. cd C:\path\to\troubleshooting_ai_agent
+  3. pip install -r requirements.txt
+  4. python main.py
+
+PowerShell Users:
+  powershell -ExecutionPolicy Bypass -File launch.ps1
+
+💻 USAGE EXAMPLES
+─────────────────
+
+Start the app and describe your issue:
+
+Example 1 - Slow System:
+  You:    "My PC is running very slow"
+  Agent:  Analyzes CPU, RAM, Disk usage
+          Shows findings and recommendations
+
+Example 2 - App Won't Open:
+  You:    "Adobe Photoshop won't open"
+  Agent:  Checks available resources
+          Provides troubleshooting steps
+
+Example 3 - Disk Issues:
+  You:    "My C drive is almost full"
+  Agent:  Shows disk usage analysis
+          Recommends cleanup steps
+
+Example 4 - Network Problem:
+  You:    "Internet connection is slow"
+  Agent:  Analyzes network interfaces
+          Provides connectivity solutions
+
+🎯 MAIN FEATURES
+─────────────────
+✓ Real-time CPU, RAM, Disk monitoring
+✓ Process and resource analysis
+✓ Temperature monitoring
+✓ Network interface checking
+✓ Intelligent issue classification
+✓ Step-by-step recommendations
+✓ Conversation history
+✓ System health analysis
+
+📊 DIAGNOSTICS PANEL (Right Side)
+──────────────────────────────────
+Shows:
+  • CPU usage and temperature
+  • RAM usage and available memory
+  • Disk space for each partition
+  • Network interface status
+
+Button:
+  "Run Full Diagnostics" - Gets complete system snapshot
+
+🎨 COLOR MEANINGS
+──────────────────
+GREEN  (✓)   = Good / Normal
+YELLOW (⚠)   = Warning / Moderate Issue  
+RED    (✗)   = Critical / Action Needed
+CYAN        = Key Information
+
+💬 CHAT INTERFACE (Left Side)
+──────────────────────────────
+1. Type your issue in the input box
+2. Press Enter or click Send
+3. Agent analyzes and responds
+4. Review findings and recommendations
+5. Follow suggested steps
+
+⚙️ SYSTEM REQUIREMENTS
+──────────────────────
+• Windows 7, 8, 10, or 11
+• Python 3.8+
+• 100MB free disk space
+• No internet required (offline tool)
+
+📁 PROJECT FILES
+─────────────────
+main.py                 - Main GUI application
+diagnostics.py          - System diagnostics module
+troubleshooting_engine.py - AI reasoning engine
+advanced_diagnostics.py - Additional analysis tools
+config.py              - Configuration settings
+requirements.txt       - Python dependencies
+run.bat                - Windows launcher
+launch.ps1             - PowerShell launcher
+README.md              - Full documentation
+USAGE_GUIDE.py         - Detailed usage examples
+
+🔧 COMMON ISSUES & SOLUTIONS
+──────────────────────────────
+
+Issue: Python not found
+Solution: Install Python 3.8+ from python.org
+         Make sure to check "Add Python to PATH"
+
+Issue: Module not found error
+Solution: Run "pip install -r requirements.txt"
+         Or try: pip install customtkinter psutil
+
+Issue: Permission denied error
+Solution: Run Command Prompt/PowerShell as Administrator
+         Right-click > Run as Administrator
+
+Issue: Temperature not showing
+Solution: May need admin privileges
+         Not critical for other diagnostics
+         Run as Administrator for full features
+
+📖 NEXT STEPS
+──────────────
+
+1. Installation:
+   □ Run run.bat (Windows) or launch.ps1
+   □ Wait for dependencies to install
+   □ Application will launch
+
+2. First Use:
+   □ Click "Run Full Diagnostics"
+   □ Review system status
+   □ Describe an issue to agent
+
+3. Getting Help:
+   □ Read README.md for detailed documentation
+   □ Check USAGE_GUIDE.py for examples
+   □ Review config.py to customize
+
+⭐ TIPS FOR BEST RESULTS
+─────────────────────────
+
+✓ Run as Administrator for full diagnostics
+✓ Close unnecessary apps before diagnosing
+✓ Describe issues in detail
+✓ Run multiple diagnostics to spot trends
+✓ Check recommendations carefully
+✓ Restart after applying fixes
+
+🎓 LEARNING MORE
+────────────────
+
+Read the documentation:
+  README.md        - Complete feature documentation
+  USAGE_GUIDE.py   - Detailed examples and scenarios
+  config.py        - Configuration options
+
+Modify the code:
+  Easy to customize colors, thresholds, recommendations
+  Well-commented code for easy understanding
+  Modular design for easy extension
+
+═══════════════════════════════════════════════════════════════════════
+
+Ready to get started? 
+
+Windows: Double-click run.bat
+Linux/Mac: Not currently supported (Windows only)
+
+Questions? Check README.md or USAGE_GUIDE.py
+
+═══════════════════════════════════════════════════════════════════════
