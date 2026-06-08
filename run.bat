@@ -10,7 +10,7 @@ echo.
 
 REM Check if Python is installed
 python --version >nul 2>&1
-if errorlevel 1 (
+if %errorlevel% neq 0 (
     echo Error: Python is not installed or not in PATH
     echo Please install Python 3.8+ from https://www.python.org
     echo Make sure to check "Add Python to PATH" during installation
@@ -18,33 +18,33 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [*] Python found
+echo [OK] Python found.
 echo.
 
 REM Check if pip is available
 pip --version >nul 2>&1
-if errorlevel 1 (
+if %errorlevel% neq 0 (
     echo Error: pip is not available
     pause
     exit /b 1
 )
 
-echo [*] pip found
+echo [OK] pip found.
 echo.
 
 REM Check if requirements are installed
 echo [*] Checking dependencies...
 pip show customtkinter >nul 2>&1
-if errorlevel 1 (
+if %errorlevel% neq 0 (
     echo [!] Installing required packages...
     pip install -r requirements.txt
-    if errorlevel 1 (
+    if %errorlevel% neq 0 (
         echo Error: Failed to install dependencies
         pause
         exit /b 1
     )
 ) else (
-    echo [*] Dependencies already installed
+    echo [OK] Dependencies already installed
 )
 
 echo.
@@ -54,7 +54,7 @@ echo.
 REM Run the application
 python main.py
 
-if errorlevel 1 (
+if %errorlevel% neq 0 (
     echo.
     echo Error: Application failed to start
     echo Please check the error message above

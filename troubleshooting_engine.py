@@ -117,12 +117,12 @@ class TroubleshootingEngine:
     
     def is_app_failure_issue(self, issue: str) -> bool:
         """Check if issue is about app failure"""
-        keywords = ["crash", "won't open", "not opening", "fails", "error", "doesn't work", "fail to open"]
+        keywords = ["crash", "won't open", "wont open", "not opening", "fails", "error", "doesn't work", "doesnt work", "fail to open"]
         return any(keyword in issue.lower() for keyword in keywords)
     
     def is_startup_issue(self, issue: str) -> bool:
         """Check if issue is about startup"""
-        keywords = ["startup", "boot", "start", "won't boot", "slow startup"]
+        keywords = ["startup", "boot", "start", "won't boot", "wont boot", "slow startup"]
         return any(keyword in issue.lower() for keyword in keywords)
     
     def is_disk_issue(self, issue: str) -> bool:

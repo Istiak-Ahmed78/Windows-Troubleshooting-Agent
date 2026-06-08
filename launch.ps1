@@ -1,5 +1,5 @@
 # AI PC Troubleshooting Agent Launcher (PowerShell)
-# Run this script with: powershell -ExecutionPolicy Bypass -File "launch.ps1"
+# Run: powershell -ExecutionPolicy Bypass -File "launch.ps1"
 
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "  AI PC Troubleshooting Agent" -ForegroundColor Cyan
@@ -7,26 +7,24 @@ Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Check if Python is installed
-try {
-    $pythonVersion = python --version 2>&1
-    Write-Host "[✓] Python found: $pythonVersion" -ForegroundColor Green
-} catch {
-    Write-Host "[✗] Error: Python is not installed or not in PATH" -ForegroundColor Red
-    Write-Host "    Please install Python 3.8+ from https://www.python.org" -ForegroundColor Yellow
-    Write-Host "    Make sure to check 'Add Python to PATH' during installation" -ForegroundColor Yellow
+$pythonVersion = python --version 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Python is not installed or not in PATH" -ForegroundColor Red
+    Write-Host "  Install Python 3.8+ from https://www.python.org" -ForegroundColor Yellow
+    Write-Host "  Check 'Add Python to PATH' during installation" -ForegroundColor Yellow
     Read-Host "Press Enter to exit"
     exit 1
 }
+Write-Host "[OK] Python found: $pythonVersion" -ForegroundColor Green
 
 # Check if pip is available
-try {
-    $pipVersion = pip --version 2>&1
-    Write-Host "[✓] pip found: $pipVersion" -ForegroundColor Green
-} catch {
-    Write-Host "[✗] Error: pip is not available" -ForegroundColor Red
+pip --version 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] pip is not available" -ForegroundColor Red
     Read-Host "Press Enter to exit"
     exit 1
 }
+Write-Host "[OK] pip found" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "[*] Checking dependencies..." -ForegroundColor Yellow
@@ -47,12 +45,12 @@ if ($packagesNeeded.Count -gt 0) {
     Write-Host "    Packages: $($packagesNeeded -join ', ')" -ForegroundColor Yellow
     pip install -r requirements.txt
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "[✗] Error: Failed to install dependencies" -ForegroundColor Red
+        Write-Host "[ERROR] Failed to install dependencies" -ForegroundColor Red
         Read-Host "Press Enter to exit"
         exit 1
     }
 } else {
-    Write-Host "[✓] All dependencies already installed" -ForegroundColor Green
+    Write-Host "[OK] All dependencies already installed" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -64,8 +62,8 @@ python main.py
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
-    Write-Host "[✗] Error: Application failed to start" -ForegroundColor Red
-    Write-Host "    Please check the error message above" -ForegroundColor Yellow
+    Write-Host "[ERROR] Application failed to start" -ForegroundColor Red
+    Write-Host "  Check the error message above" -ForegroundColor Yellow
     Read-Host "Press Enter to exit"
     exit 1
 }
