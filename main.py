@@ -119,8 +119,9 @@ class TroubleshootingAgentGUI:
         self.send_btn.pack(side="left")
 
         # Right Panel - Diagnostics & Details
-        right_panel = ctk.CTkFrame(content)
-        right_panel.pack(side="right", fill="both", padx=(5, 0), width=350)
+        right_panel = ctk.CTkFrame(content, width=350)
+        right_panel.pack(side="right", fill="both", padx=(5, 0))
+        right_panel.pack_propagate(False)
 
         # Diagnostics section
         diag_label = ctk.CTkLabel(
@@ -211,7 +212,7 @@ class TroubleshootingAgentGUI:
         self.print_chat("user", message)
         self.user_input.delete(0, "end")
 
-        self.send_btn.config(state="disabled")
+        self.send_btn.configure(state="disabled")
 
         # Run in background thread
         thread = threading.Thread(target=self.process_user_issue, args=(message,))
@@ -254,7 +255,7 @@ class TroubleshootingAgentGUI:
             self.print_chat("agent", f"Error: {str(e)}", "finding")
             self.update_status("Error during analysis")
         finally:
-            self.send_btn.config(state="normal")
+            self.send_btn.configure(state="normal")
 
     def display_analysis_results(self, analysis: Dict):
         """Display analysis results in chat"""
@@ -298,7 +299,7 @@ class TroubleshootingAgentGUI:
 
     def run_full_diagnostics(self):
         """Run full system diagnostics"""
-        self.diagnose_btn.config(state="disabled")
+        self.diagnose_btn.configure(state="disabled")
         thread = threading.Thread(target=self._run_diagnostics_thread)
         thread.daemon = True
         thread.start()
@@ -321,7 +322,7 @@ class TroubleshootingAgentGUI:
             self.print_chat("agent", f"Error during diagnostics: {str(e)}", "finding")
             self.update_status("Error during diagnostics")
         finally:
-            self.diagnose_btn.config(state="normal")
+            self.diagnose_btn.configure(state="normal")
 
     def update_system_info_display(self):
         """Update system information display"""

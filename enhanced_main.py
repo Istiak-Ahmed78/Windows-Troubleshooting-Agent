@@ -103,8 +103,9 @@ class EnhancedTroubleshootingAgent(ctk.CTk):
         )
         self.send_btn.pack(side="left")
 
-        right = ctk.CTkFrame(content)
-        right.pack(side="right", fill="both", padx=(5, 0), width=350)
+        right = ctk.CTkFrame(content, width=350)
+        right.pack(side="right", fill="both", padx=(5, 0))
+        right.pack_propagate(False)
 
         diag_label = ctk.CTkLabel(right, text="System Diagnostics", font=("Helvetica", 14, "bold"))
         diag_label.pack(pady=(0, 10))
@@ -170,7 +171,7 @@ class EnhancedTroubleshootingAgent(ctk.CTk):
 
         self.add_chat("user", message)
         self.input.delete(0, "end")
-        self.send_btn.config(state="disabled")
+        self.send_btn.configure(state="disabled")
 
         thread = threading.Thread(target=self.analyze_issue, args=(message,))
         thread.daemon = True
@@ -194,7 +195,7 @@ class EnhancedTroubleshootingAgent(ctk.CTk):
             self.add_chat("agent", f"Error: {str(e)}", "finding")
             self.status.set("Error")
         finally:
-            self.send_btn.config(state="normal")
+            self.send_btn.configure(state="normal")
 
     def display_analysis(self, analysis: Dict):
         """Display analysis results"""
@@ -210,7 +211,7 @@ class EnhancedTroubleshootingAgent(ctk.CTk):
 
     def run_diagnostics(self):
         """Run full diagnostics"""
-        self.diagnose_btn.config(state="disabled")
+        self.diagnose_btn.configure(state="disabled")
         thread = threading.Thread(target=self._diagnose_thread)
         thread.daemon = True
         thread.start()
@@ -226,7 +227,7 @@ class EnhancedTroubleshootingAgent(ctk.CTk):
             self.add_chat("agent", f"Error: {str(e)}", "finding")
             self.status.set("Error")
         finally:
-            self.diagnose_btn.config(state="normal")
+            self.diagnose_btn.configure(state="normal")
 
     def update_system_display(self):
         """Update system info display"""

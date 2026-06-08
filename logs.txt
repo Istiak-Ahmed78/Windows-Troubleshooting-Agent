@@ -1,0 +1,130 @@
+Agent: Welcome! I'm your AI PC Troubleshooting Agent.
+
+Agent: Describe any PC issues you're experiencing, such as:
+
+  - 'My PC is running slow'
+
+  - 'An application won't open'
+
+  - 'My disk is full'
+
+  - 'Network connection is unstable'
+
+Agent: 
+I'll analyze your system and provide solutions!
+
+Agent: Running comprehensive system diagnostics...
+
+You: Check my disk
+
+Agent: I'm analyzing your PC issue. Please wait while I gather diagnostics...
+
+Reasoning: Gathering system information...
+
+Reasoning: Analyzing your issue based on system data...
+
+Agent: Issue Type: Disk Problem
+
+Agent: Severity Level: Low
+
+Agent: Recommended Solutions:
+
+• Delete temporary files: Run cleanmgr.exe
+
+• Remove unnecessary applications via Control Panel > Programs
+
+• Delete old downloads and documents
+
+• Empty Recycle Bin completely
+
+• Move files to external storage
+
+...and 3 more recommendations
+
+Agent: Next Steps:
+
+1. Run Disk Cleanup utility
+
+2. Identify and delete large unnecessary files
+
+3. Uninstall unused programs
+
+You: is my ssd good? How is the health?
+
+Agent: I'm analyzing your PC issue. Please wait while I gather diagnostics...
+
+Reasoning: Gathering system information...
+
+Reasoning: Analyzing your issue based on system data...
+
+Agent: Issue Type: General System Issue
+
+Agent: Severity Level: Low
+
+Reasoning: I've analyzed your system. Running comprehensive diagnostics...
+
+Agent: Next Steps:
+
+1. Run Windows Update
+
+2. Scan for malware
+
+3. Update drivers
+
+You: 1
+
+Agent: I'm analyzing your PC issue. Please wait while I gather diagnostics...
+
+Reasoning: Gathering system information...
+
+Reasoning: Analyzing your issue based on system data...
+
+Agent: Issue Type: General System Issue
+
+Agent: Severity Level: Low
+
+Reasoning: I've analyzed your system. Running comprehensive diagnostics...
+
+Agent: Next Steps:
+
+1. Run Windows Update
+
+2. Scan for malware
+
+3. Update drivers
+
+You: postman application is not opening
+
+Agent: I'm analyzing your PC issue. Please wait while I gather diagnostics...
+
+Reasoning: Gathering system information...
+
+Reasoning: Analyzing your issue based on system data...
+
+Agent: Issue Type: Application Failure
+
+Agent: Severity Level: Low
+
+Agent: Key Findings:
+
+Application 'postman application is not opening' may have dependency or compatibility issues
+
+Agent: Recommended Solutions:
+
+• Run the application as Administrator (right-click → Run as Administrator)
+
+• Restart the application
+
+• Restart your computer
+
+• Check for application updates
+
+• Disable antivirus temporarily to see if it's blocking the app
+
+...and 2 more recommendations
+
+Agent: Next Steps:
+
+1. Free up system resources
+
+2. Try running as Administrator
