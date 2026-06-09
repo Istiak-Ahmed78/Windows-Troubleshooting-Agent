@@ -1,130 +1,78 @@
-Agent: Welcome! I'm your AI PC Troubleshooting Agent.
+Agent: Welcome! I'll diagnose your PC issues.
 
-Agent: Describe any PC issues you're experiencing, such as:
+If Ollama is running, I'll use AI reasoning with tool-based investigation.
 
-  - 'My PC is running slow'
+If not, I'll use the built-in rule engine.
 
-  - 'An application won't open'
 
-  - 'My disk is full'
+Try: "My PC is slow", "Postman wont open", "disk full", or "scan for virus"
 
-  - 'Network connection is unstable'
+Provider set to: OpenRouter
 
-Agent: 
-I'll analyze your system and provide solutions!
+You: I cannot open postman application
 
-Agent: Running comprehensive system diagnostics...
+Agent: Analyzing with LLM... (this may take a moment)
 
-You: Check my disk
+  Using API (OpenAI-compatible)
 
-Agent: I'm analyzing your PC issue. Please wait while I gather diagnostics...
+  Reading your issue and planning investigation...
 
-Reasoning: Gathering system information...
+  Querying API (OpenAI-compatible)... (step 1/8)
 
-Reasoning: Analyzing your issue based on system data...
+  [TOOL] get_system_info()
 
-Agent: Issue Type: Disk Problem
+  Running get_system_info...
 
-Agent: Severity Level: Low
+  [TOOL] get_system_info -> {'timestamp': '2026-06-09T13:02:30.499980', 'cpu': {'usage_percent': 1.4, 'count
 
-Agent: Recommended Solutions:
+  Querying API (OpenAI-compatible)... (step 2/8)
 
-• Delete temporary files: Run cleanmgr.exe
+  [TOOL] get_event_log_crashes()
 
-• Remove unnecessary applications via Control Panel > Programs
+  Running get_event_log_crashes...
 
-• Delete old downloads and documents
+  [TOOL] get_event_log_crashes -> [{'time': '/Date(1780974974975)/', 'application': 'python.exe, version: 26.1.240
 
-• Empty Recycle Bin completely
+  Querying API (OpenAI-compatible)... (step 3/8)
 
-• Move files to external storage
+Agent: The Postman application may not be opening due to a conflict with another application or a crash. Recent crash logs indicate issues with 'python.exe' and other applications, which might be affecting system stability. Here are some steps you can take to troubleshoot the issue:
 
-...and 3 more recommendations
+1. **Restart Your Computer**: This can resolve temporary conflicts.
+2. **Check for Updates**: Ensure that Postman and your operating system are up to date.
+3. **Reinstall Postman**: Uninstall and then reinstall the application to fix any corrupted files.
+4. **Check for Conflicting Software**: Look for any recently installed applications that might conflict with Postman.
+5. **Run as Administrator**: Try running Postman with administrative privileges.
+6. **Check Event Viewer**: Look for any specific error messages related to Postman in the Event Viewer for more details.
 
-Agent: Next Steps:
+LLM used tools: get_system_info, get_event_log_crashes
 
-1. Run Disk Cleanup utility
+=== AI Analysis ===
 
-2. Identify and delete large unnecessary files
+Agent: Severity: Low
 
-3. Uninstall unused programs
+  Used 2 tool(s) to investigate
 
-You: is my ssd good? How is the health?
+Agent: The Postman application may not be opening due to a conflict with another application or a crash. Recent crash logs indicate issues with 'python.exe' and other applications, which might be affecting system stability. Here are some steps you can take to troubleshoot the issue:
 
-Agent: I'm analyzing your PC issue. Please wait while I gather diagnostics...
+1. **Restart Your Computer**: This can resolve temporary conflicts.
+2. **Check for Updates**: Ensure that Postman and your operating system are up to date.
+3. **Reinstall Postman**: Uninstall and then reinstall the application to fix any corrupted files.
+4. **Check for Conflicting Software**: Look for any recently installed applications that might conflict with Postman.
+5. **Run as Administrator**: Try running Postman with administrative privileges.
+6. **Check Event Viewer**: Look for any specific error messages related to Postman in the Event Viewer for more details.
 
-Reasoning: Gathering system information...
+  Recent crashes in other applications may indicate system instability.
 
-Reasoning: Analyzing your issue based on system data...
+  No specific crash logs for Postman were found.
 
-Agent: Issue Type: General System Issue
+  Restart your computer.
 
-Agent: Severity Level: Low
+  Reinstall Postman.
 
-Reasoning: I've analyzed your system. Running comprehensive diagnostics...
+  Check for conflicting software.
 
-Agent: Next Steps:
+Agent: Next steps:
 
-1. Run Windows Update
+1. Try the solutions above
 
-2. Scan for malware
-
-3. Update drivers
-
-You: 1
-
-Agent: I'm analyzing your PC issue. Please wait while I gather diagnostics...
-
-Reasoning: Gathering system information...
-
-Reasoning: Analyzing your issue based on system data...
-
-Agent: Issue Type: General System Issue
-
-Agent: Severity Level: Low
-
-Reasoning: I've analyzed your system. Running comprehensive diagnostics...
-
-Agent: Next Steps:
-
-1. Run Windows Update
-
-2. Scan for malware
-
-3. Update drivers
-
-You: postman application is not opening
-
-Agent: I'm analyzing your PC issue. Please wait while I gather diagnostics...
-
-Reasoning: Gathering system information...
-
-Reasoning: Analyzing your issue based on system data...
-
-Agent: Issue Type: Application Failure
-
-Agent: Severity Level: Low
-
-Agent: Key Findings:
-
-Application 'postman application is not opening' may have dependency or compatibility issues
-
-Agent: Recommended Solutions:
-
-• Run the application as Administrator (right-click → Run as Administrator)
-
-• Restart the application
-
-• Restart your computer
-
-• Check for application updates
-
-• Disable antivirus temporarily to see if it's blocking the app
-
-...and 2 more recommendations
-
-Agent: Next Steps:
-
-1. Free up system resources
-
-2. Try running as Administrator
+2. Let me know if the issue persists
