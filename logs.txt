@@ -1,3 +1,4 @@
+
 Agent: Welcome! I'll diagnose your PC issues.
 
 If Ollama is running, I'll use AI reasoning with tool-based investigation.
@@ -7,9 +8,9 @@ If not, I'll use the built-in rule engine.
 
 Try: "My PC is slow", "Postman wont open", "disk full", or "scan for virus"
 
-Provider set to: OpenRouter
+Agent: LLM mode active (OpenRouter)
 
-You: I cannot open postman application
+You: Postman application is installed. But When I open It nothing happens. No error, nothing! The application also doesnot open. Can you check please?
 
 Agent: Analyzing with LLM... (this may take a moment)
 
@@ -19,13 +20,21 @@ Agent: Analyzing with LLM... (this may take a moment)
 
   Querying API (OpenAI-compatible)... (step 1/8)
 
-  [TOOL] get_system_info()
+  [TOOL] get_installed_software()
 
-  Running get_system_info...
+  Running get_installed_software...
 
-  [TOOL] get_system_info -> {'timestamp': '2026-06-09T13:02:30.499980', 'cpu': {'usage_percent': 1.4, 'count
+  [TOOL] get_installed_software -> [{'name': 'Android Studio', 'version': '2025.3', 'publisher': 'Google LLC'}, {'n
 
   Querying API (OpenAI-compatible)... (step 2/8)
+
+  [TOOL] get_top_processes()
+
+  Running get_top_processes...
+
+  [TOOL] get_top_processes -> {'top_cpu': [{'pid': 0, 'name': 'System Idle Process', 'memory_percent': 6.60365
+
+  Querying API (OpenAI-compatible)... (step 3/8)
 
   [TOOL] get_event_log_crashes()
 
@@ -33,46 +42,68 @@ Agent: Analyzing with LLM... (this may take a moment)
 
   [TOOL] get_event_log_crashes -> [{'time': '/Date(1780974974975)/', 'application': 'python.exe, version: 26.1.240
 
-  Querying API (OpenAI-compatible)... (step 3/8)
+  Querying API (OpenAI-compatible)... (step 4/8)
 
-Agent: The Postman application may not be opening due to a conflict with another application or a crash. Recent crash logs indicate issues with 'python.exe' and other applications, which might be affecting system stability. Here are some steps you can take to troubleshoot the issue:
+  [TOOL] get_drivers_summary()
 
-1. **Restart Your Computer**: This can resolve temporary conflicts.
-2. **Check for Updates**: Ensure that Postman and your operating system are up to date.
-3. **Reinstall Postman**: Uninstall and then reinstall the application to fix any corrupted files.
-4. **Check for Conflicting Software**: Look for any recently installed applications that might conflict with Postman.
-5. **Run as Administrator**: Try running Postman with administrative privileges.
-6. **Check Event Viewer**: Look for any specific error messages related to Postman in the Event Viewer for more details.
+  Running get_drivers_summary...
 
-LLM used tools: get_system_info, get_event_log_crashes
+  [TOOL] get_drivers_summary -> {'total': 380, 'running': 159, 'stopped': 221, 'problem_devices': []}
 
-=== AI Analysis ===
+  Querying API (OpenAI-compatible)... (step 5/8)
+
+  [TOOL] check_system_file_integrity()
+
+  Running check_system_file_integrity...
+
+  [TOOL] check_system_file_integrity -> {'status': 'Completed', 'corrupted_files': 'found', 'details': '\n\x00\n\x00\n\x
+
+  Querying API (OpenAI-compatible)... (step 6/8)
+
+  [TOOL] run_dism_repair()
+
+  Running run_dism_repair...
+
+  [TOOL] run_dism_repair -> {'error': 'Unknown tool: run_dism_repair'}
+
+  Querying API (OpenAI-compatible)... (step 7/8)
+
+  [TOOL] run_sfc_scan()
+
+  Running run_sfc_scan...
+
+  [TOOL] run_sfc_scan -> {'error': 'Unknown tool: run_sfc_scan'}
+
+  Querying API (OpenAI-compatible)... (step 8/8)
+
+  Asking LLM to use correct format...
+
+=== General (limit reached) ===
 
 Agent: Severity: Low
 
-  Used 2 tool(s) to investigate
+  Investigated 7 aspects of the issue
 
-Agent: The Postman application may not be opening due to a conflict with another application or a crash. Recent crash logs indicate issues with 'python.exe' and other applications, which might be affecting system stability. Here are some steps you can take to troubleshoot the issue:
+  Tool: get_installed_software
 
-1. **Restart Your Computer**: This can resolve temporary conflicts.
-2. **Check for Updates**: Ensure that Postman and your operating system are up to date.
-3. **Reinstall Postman**: Uninstall and then reinstall the application to fix any corrupted files.
-4. **Check for Conflicting Software**: Look for any recently installed applications that might conflict with Postman.
-5. **Run as Administrator**: Try running Postman with administrative privileges.
-6. **Check Event Viewer**: Look for any specific error messages related to Postman in the Event Viewer for more details.
+  Tool: get_top_processes
 
-  Recent crashes in other applications may indicate system instability.
+  Tool: get_event_log_crashes
 
-  No specific crash logs for Postman were found.
+  Tool: get_drivers_summary
 
-  Restart your computer.
+  Tool: check_system_file_integrity
 
-  Reinstall Postman.
+  Tool: run_dism_repair
 
-  Check for conflicting software.
+  Tool: run_sfc_scan
+
+  Try restarting your PC
+
+  Run a full diagnostic
 
 Agent: Next steps:
 
-1. Try the solutions above
+1. Try the suggestions above
 
-2. Let me know if the issue persists
+2. Run a more detailed investigation

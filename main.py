@@ -9,10 +9,11 @@ import threading
 import time
 import os
 import subprocess
-from typing import Dict
+from typing import Dict, List
 from diagnostics import WindowsDiagnostics, format_bytes
 from troubleshooting_engine import TroubleshootingEngine
 from agent_loop import AgentLoop, ModelManager, OllamaProvider, OpenAICompatibleProvider, PROVIDER_PRESETS
+from remediation_engine import RemediationEngine, TODO_STATE_FILE
 
 
 class TroubleshootingAgentGUI:
@@ -24,6 +25,7 @@ class TroubleshootingAgentGUI:
         self.diagnostics = WindowsDiagnostics()
         self.rule_engine = TroubleshootingEngine()
         self.agent_loop = AgentLoop()
+        self.remediation = RemediationEngine()
         self.current_diagnostics = None
         self.using_llm = False
 
@@ -34,6 +36,27 @@ class TroubleshootingAgentGUI:
         self.api_config = self.load_api_config()
         self.apply_provider_config(self.api_config)
         self.check_llm_availability()
+
+        # Check if we're resuming after a restart
+        if RemediationEngine.was_restarted():
+            self.root.after(2000, self._resume_after_restart)
+
+    def _resume_after_restart(self):
+        """Check for saved TODO state after a PC restart"""
+        state = self.remediation.load_state()
+        if state and state.get("restart_initiated"):
+            todos = state.get("todos", [])
+            start_idx = state.get("current_index", 0)
+            self.print_chat("agent", "Welcome back! I see you restarted your PC.", "header")
+            self.print_chat("info", "Let me verify which steps were completed before continuing.")
+            thread = threading.Thread(
+                target=self._execute_todos,
+                args=(todos, start_idx, "Resuming after restart...")
+            )
+            thread.daemon = True
+            thread.start()
+        else:
+            self.print_chat("info", "Restart detected. No pending tasks to resume.")
 
     def check_llm_availability(self):
         """Check saved API config or Ollama, then prompt for provider setup."""
@@ -576,11 +599,114 @@ class TroubleshootingAgentGUI:
             self.update_system_info_display()
             self.update_status("Ready")
 
+            # If LLM generated actionable TODOs, start the execution flow
+            todos = analysis.get("todos", [])
+            if todos and not analysis.get("from_rule_engine"):
+                self.print_chat("header", "=== Action Plan ===")
+                self.print_chat("agent", f"I found {len(todos)} actionable step(s) to fix the issue.")
+                self.print_chat("info", "I'll guide you through each step and ask for your permission.")
+                self._execute_todos(todos, 0)
+
         except Exception as e:
             self.print_chat("agent", f"Error: {str(e)}", "finding")
             self.update_status("Error")
         finally:
             self.send_btn.configure(state="normal")
+
+    def _execute_todos(self, todos: List[Dict], start_index: int = 0, context_msg: str = ""):
+        """Execute TODO items one by one with user permission and verification"""
+        if context_msg:
+            self.print_chat("info", context_msg)
+
+        self.remediation.save_state(todos, start_index)
+        total = len(todos)
+
+        for i in range(start_index, total):
+            todo = todos[i]
+            action = todo.get("action", todo.get("action_type", "?"))
+            desc = todo.get("description", "Execute step")
+            params = todo.get("params", {})
+            needs_restart = todo.get("requires_restart", False)
+
+            # Show TODO details
+            detail_lines = [f"Step {i+1}/{total}: {desc}"]
+            for k, v in params.items():
+                detail_lines.append(f"  {k}: {v}")
+            detail_str = "\n".join(detail_lines)
+
+            # Ask permission via messagebox
+            choice = tk.messagebox.askyesnocancel(
+                f"Execute Step {i+1}/{total}?",
+                f"{detail_str}\n\n"
+                f"Yes = Execute this step\n"
+                f"No = Skip this step\n"
+                f"Cancel = Stop execution"
+            )
+
+            if choice is None:  # Cancel
+                self.print_chat("info", f"Stopped execution at step {i+1}/{total}.")
+                self.remediation.save_state(todos, i)
+                return
+            elif not choice:  # No — skip
+                self.print_chat("info", f"Skipped: {desc}")
+                self.remediation.save_state(todos, i + 1)
+                continue
+
+            # User approved — execute
+            self.print_chat("action", f"Executing: {desc}")
+            self.update_status(f"Executing: {desc}")
+            result = self.remediation.execute(action, params)
+
+            if result.get("restart"):
+                self.print_chat("info", "Restart required. Saving progress...")
+                self.remediation.mark_restart_initiated()
+                self.remediation.save_state(todos, i + 1)
+                # Keep marker so next launch resumes
+                self.print_chat("action",
+                    "Please restart your PC now. When you reopen this app, "
+                    "I'll continue from where I left off.")
+                return
+
+            # Show execution result
+            if result.get("success"):
+                self.print_chat("solution", f"Success: {result.get('message', desc)}")
+            else:
+                self.print_chat("finding",
+                    f"Failed: {result.get('error', result.get('message', 'Unknown error'))}")
+                retry = tk.messagebox.askyesno(
+                    "Step Failed",
+                    f"Step {i+1} failed: {result.get('error', 'Unknown error')}\n\n"
+                    f"Try again?"
+                )
+                if retry:
+                    # Retry once
+                    result = self.remediation.execute(action, params)
+                    if result.get("success"):
+                        self.print_chat("solution", f"Success on retry: {result.get('message', desc)}")
+                    else:
+                        self.print_chat("finding", f"Still failed: {result.get('error', 'Unknown error')}")
+                        self.print_chat("info", "You can try this step manually.")
+                else:
+                    self.print_chat("info", "You can try this step manually later.")
+
+            # Verify the result
+            self.print_chat("reasoning", "Verifying result...")
+            verify_result = self.remediation.verify(action, params)
+            if verify_result.get("success"):
+                self.print_chat("solution", f"Verified: {verify_result.get('message', 'OK')}")
+            else:
+                self.print_chat("finding",
+                    f"Verification warning: {verify_result.get('message', 'Could not verify')}")
+
+            # Save progress
+            self.remediation.save_state(todos, i + 1)
+            self.update_status("Ready")
+
+        # All done
+        self.remediation.clear_state()
+        self.print_chat("header", "=== All Steps Complete ===")
+        self.print_chat("agent", "All action steps have been processed.")
+        self.print_chat("info", "If the issue persists, describe it again for further analysis.")
 
     def display_analysis(self, analysis: Dict):
         it = analysis.get('issue_type', 'General')

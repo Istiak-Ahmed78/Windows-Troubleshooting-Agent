@@ -7,6 +7,8 @@ import os
 import re
 import shutil
 import subprocess
+import sys
+import traceback
 import urllib.request
 import urllib.error
 import time
@@ -14,11 +16,36 @@ from typing import Dict, List, Any, Optional, Callable
 from diagnostics import WindowsDiagnostics, ErrorMessageParser
 
 
+# --- Logging ---
+_log_file = None
+
+def _log(msg: str):
+    global _log_file
+    if _log_file is None:
+        import tempfile
+        _log_file = os.path.join(tempfile.gettempdir(), "ai_troubleshooter_debug.log")
+    try:
+        with open(_log_file, "a", encoding="utf-8") as f:
+            f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
+    except:
+        pass
+
+
+# --- Exception wrapper ---
+class ProviderError(RuntimeError):
+    """Wraps any provider call error with the raw response for debugging."""
+    def __init__(self, message: str, raw_response: str = "", status_code: int = 0):
+        super().__init__(message)
+        self.raw_response = raw_response
+        self.status_code = status_code
+
+
 # ============================================================
 # Tools the LLM can call
 # ============================================================
 
 TOOL_DEFINITIONS = [
+    # === Core System ===
     {
         "name": "get_system_info",
         "description": "Get comprehensive system information including CPU, RAM, disk, and network status",
@@ -41,28 +68,8 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "get_top_processes",
-        "description": "Get top 5 CPU-consuming and top 5 memory-consuming processes",
-        "args": {}
-    },
-    {
-        "name": "parse_error_message",
-        "description": "Parse a Windows error message text and identify the specific error type and solutions",
-        "args": {"text": "The error message text to analyze"}
-    },
-    {
-        "name": "run_defender_scan",
-        "description": "Run a Windows Defender quick scan to check for malware (takes 1-5 minutes)",
-        "args": {}
-    },
-    {
-        "name": "run_chkdsk",
-        "description": "Run chkdsk in read-only mode to check disk for errors and bad sectors",
-        "args": {"drive": "Drive letter to check (default: C:)"}
-    },
-    {
-        "name": "get_event_log_crashes",
-        "description": "Get recent application crash events from Windows Event Log",
-        "args": {}
+        "description": "Get top CPU-consuming and memory-consuming processes",
+        "args": {"top_n": "Number of top processes to show (default 10)"}
     },
     {
         "name": "get_system_uptime",
@@ -70,28 +77,273 @@ TOOL_DEFINITIONS = [
         "args": {}
     },
     {
+        "name": "get_performance_summary",
+        "description": "Get CPU, memory, disk usage percentages in one call (quick health check)",
+        "args": {}
+    },
+    # === Installed Software & Startup ===
+    {
+        "name": "get_installed_software",
+        "description": "List installed software from Windows Registry (name, version, publisher)",
+        "args": {}
+    },
+    {
+        "name": "get_startup_programs",
+        "description": "List programs that run at system startup",
+        "args": {}
+    },
+    # === Services & Drivers ===
+    {
+        "name": "get_running_services",
+        "description": "List running Windows services and their status",
+        "args": {"name_filter": "Optional filter by service name (e.g. 'defend', 'update')"}
+    },
+    {
+        "name": "get_drivers_summary",
+        "description": "Get list of installed drivers, their states, and problem devices",
+        "args": {}
+    },
+    {
+        "name": "get_problem_devices",
+        "description": "Get devices with issues (yellow exclamation mark in Device Manager)",
+        "args": {}
+    },
+    # === Event Log & Crashes ===
+    {
+        "name": "get_event_log_crashes",
+        "description": "Get recent application crash events from Windows Event Log",
+        "args": {}
+    },
+    {
+        "name": "get_critical_events",
+        "description": "Get critical system errors from Event Log (BSOD, hardware failures)",
+        "args": {"max_events": "Maximum events to return (default 10)"}
+    },
+    {
+        "name": "get_minidump_info",
+        "description": "Check for BSOD minidump files and return their details",
+        "args": {}
+    },
+    # === Error Analysis ===
+    {
+        "name": "parse_error_message",
+        "description": "Parse a Windows error message text and identify the specific error type and solutions",
+        "args": {"text": "The error message text to analyze"}
+    },
+    {
+        "name": "parse_bsod_error",
+        "description": "Analyze a BSOD stop code (e.g. IRQL_NOT_LESS_OR_EQUAL, KMODE_EXCEPTION) and suggest causes",
+        "args": {"stop_code": "The BSOD stop code name or bug check string"}
+    },
+    # === Disk & File System ===
+    {
+        "name": "get_disk_health",
+        "description": "Check disk health using SMART data and file system errors",
+        "args": {}
+    },
+    {
+        "name": "check_file_locks",
+        "description": "Check which process is locking a specific file (handle.exe or built-in method)",
+        "args": {"file_path": "Full path to the file"}
+    },
+    {
+        "name": "get_disk_space_detail",
+        "description": "Get detailed disk usage across all drives including temp file sizes",
+        "args": {}
+    },
+    # === Network ===
+    {
+        "name": "get_network_info",
+        "description": "Get network adapter information including IP, DNS, and connection status",
+        "args": {}
+    },
+    {
+        "name": "test_network_connectivity",
+        "description": "Test network connectivity: ping gateway, DNS resolution, and external host",
+        "args": {}
+    },
+    {
+        "name": "get_wifi_info",
+        "description": "Get WiFi adapter status, signal strength, and connected SSID",
+        "args": {}
+    },
+    {
+        "name": "get_bluetooth_status",
+        "description": "Check Bluetooth adapter and paired device status",
+        "args": {}
+    },
+    # === Hardware ===
+    {
+        "name": "get_usb_devices",
+        "description": "List connected USB devices and their status",
+        "args": {}
+    },
+    {
+        "name": "get_display_info",
+        "description": "Get GPU and display adapter information",
+        "args": {}
+    },
+    {
+        "name": "get_audio_devices",
+        "description": "Get audio playback and recording devices",
+        "args": {}
+    },
+    {
+        "name": "get_printer_info",
+        "description": "Get printer status and print spooler status",
+        "args": {}
+    },
+    {
+        "name": "get_battery_info",
+        "description": "Get battery status and health information",
+        "args": {}
+    },
+    # === Windows Update & System Health ===
+    {
+        "name": "get_windows_update_status",
+        "description": "Get Windows Update status, pending updates, and last check time",
+        "args": {}
+    },
+    {
+        "name": "check_system_file_integrity",
+        "description": "Run SFC /verifyonly to check system file integrity (read-only, about 2-5 min)",
+        "args": {}
+    },
+    {
         "name": "get_windows_defender_status",
-        "description": "Check if Windows Defender is active and when it last scanned",
+        "description": "Check if Windows Defender is active, real-time protection, and last scan",
+        "args": {}
+    },
+    # === Boot & Recovery ===
+    {
+        "name": "get_boot_configuration",
+        "description": "Get boot configuration data (BCD) and boot manager status",
+        "args": {}
+    },
+    {
+        "name": "get_user_profiles",
+        "description": "List user profiles on the system and their status",
         "args": {}
     },
 ]
 
 
+def _run_powershell(cmd: str, timeout: int = 30) -> str:
+    """Run a PowerShell command and return stdout"""
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", cmd],
+            capture_output=True, text=True, timeout=timeout
+        )
+        return result.stdout.strip() or result.stderr.strip()
+    except subprocess.TimeoutExpired:
+        return "Command timed out"
+    except Exception as e:
+        return f"Error: {e}"
+
+def _parse_powershell_table(text: str) -> List[Dict[str, str]]:
+    """Parse a PowerShell table output into list of dicts"""
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
+    if len(lines) < 3:
+        return []
+    headers = [h.strip().lower().replace(" ", "_") for h in lines[0].split()]
+    rows = []
+    for line in lines[2:]:
+        if "---" in line:
+            continue
+        parts = line.split()
+        if len(parts) >= len(headers):
+            rows.append(dict(zip(headers, parts[:len(headers)])))
+    return rows
+
+def _run_cmd(cmd: str, timeout: int = 30) -> str:
+    """Run a system command and return stdout"""
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+        return result.stdout.strip() or result.stderr.strip()
+    except subprocess.TimeoutExpired:
+        return "Command timed out"
+    except Exception as e:
+        return f"Error: {e}"
+
+
 def _get_tool_implementations() -> Dict[str, Callable]:
     """Map tool names to actual functions"""
     d = WindowsDiagnostics()
+    from advanced_diagnostics import AdvancedDiagnostics as AD
+
+    # Helper to run a static method or return error
+    def _safe_static(func, *args):
+        try:
+            return func(*args) if args else func()
+        except Exception as e:
+            return {"error": str(e)}
+
     return {
+        # === Core System ===
         "get_system_info": lambda args: d.get_system_info(),
         "get_cpu_info": lambda args: d.get_cpu_info(),
         "get_memory_info": lambda args: d.get_memory_info(),
         "get_disk_info": lambda args: d.get_disk_info(),
-        "get_top_processes": lambda args: d.get_top_processes(),
-        "parse_error_message": lambda args: ErrorMessageParser.parse(args.get("text", "")),
-        "run_defender_scan": lambda args: d.run_windows_defender_scan(),
-        "run_chkdsk": lambda args: d.run_chkdsk(args.get("drive", "C:")),
-        "get_event_log_crashes": lambda args: d.get_recent_app_crashes(),
+        "get_top_processes": lambda args: d.get_top_processes(args.get("top_n", 10)),
         "get_system_uptime": lambda args: d.get_system_uptime(),
+        "get_performance_summary": lambda args: {
+            "cpu": d.get_cpu_info(),
+            "memory": d.get_memory_info(),
+            "disk": d.get_disk_info()
+        },
+
+        # === Installed Software & Startup ===
+        "get_installed_software": lambda args: _safe_static(AD.get_installed_software),
+        "get_startup_programs": lambda args: _safe_static(AD.get_startup_programs),
+
+        # === Services & Drivers ===
+        "get_running_services": lambda args: _safe_static(
+            AD.get_running_services, args.get("name_filter", "")
+        ),
+        "get_drivers_summary": lambda args: _safe_static(AD.get_drivers_summary),
+        "get_problem_devices": lambda args: _safe_static(AD.get_problem_devices),
+
+        # === Event Log & Crashes ===
+        "get_event_log_crashes": lambda args: d.get_recent_app_crashes(),
+        "get_critical_events": lambda args: _safe_static(
+            AD.get_critical_events, args.get("max_events", 10)
+        ),
+        "get_minidump_info": lambda args: _safe_static(AD.get_minidump_info),
+
+        # === Error Analysis ===
+        "parse_error_message": lambda args: ErrorMessageParser.parse(args.get("text", "")),
+        "parse_bsod_error": lambda args: _safe_static(AD.parse_bsod_error, args.get("stop_code", "")),
+
+        # === Disk & File System ===
+        "get_disk_health": lambda args: d.run_chkdsk(args.get("drive", "C:")),
+        "check_file_locks": lambda args: _safe_static(AD.check_file_locks, args.get("file_path", "")),
+        "get_disk_space_detail": lambda args: {
+            "partitions": d.get_disk_info(),
+            "temp_files": _safe_static(AD.get_temp_file_size)
+        },
+
+        # === Network ===
+        "get_network_info": lambda args: d.get_network_info(),
+        "test_network_connectivity": lambda args: _safe_static(AD.test_network_connectivity),
+        "get_wifi_info": lambda args: _safe_static(AD.get_wifi_info),
+        "get_bluetooth_status": lambda args: _safe_static(AD.get_bluetooth_status),
+
+        # === Hardware ===
+        "get_usb_devices": lambda args: _safe_static(AD.get_usb_devices),
+        "get_display_info": lambda args: _safe_static(AD.get_display_info),
+        "get_audio_devices": lambda args: _safe_static(AD.get_audio_devices),
+        "get_printer_info": lambda args: _safe_static(AD.get_printer_info),
+        "get_battery_info": lambda args: d.get_battery_info(),
+
+        # === Windows Update & System Health ===
+        "get_windows_update_status": lambda args: _safe_static(AD.get_windows_update_status),
+        "check_system_file_integrity": lambda args: _safe_static(AD.check_system_file_integrity),
         "get_windows_defender_status": lambda args: d.get_windows_defender_status(),
+
+        # === Boot & Recovery ===
+        "get_boot_configuration": lambda args: _safe_static(AD.get_boot_configuration),
+        "get_user_profiles": lambda args: _safe_static(AD.get_user_profiles),
     }
 
 
@@ -128,8 +380,46 @@ When you have enough information to answer the user, output:
 ```json
 {{"answer": "Your response to the user here",
   "findings": ["Finding 1", "Finding 2"],
-  "solutions": ["Solution 1", "Solution 2"]}}
+  "solutions": ["Solution 1", "Solution 2"],
+  "todos": [
+    {{
+      "action": "set_env_var",
+      "params": {{"name": "FLUTTER_HOME", "value": "C:\\flutter", "scope": "user"}},
+      "description": "Set FLUTTER_HOME environment variable",
+      "requires_restart": false
+    }},
+    {{
+      "action": "install_package",
+      "params": {{"package": "Git.Git", "tool": "winget"}},
+      "description": "Install Git for Windows",
+      "requires_restart": false
+    }},
+    {{
+      "action": "restart_pc",
+      "params": {{}},
+      "description": "Restart your PC to apply changes",
+      "requires_restart": true
+    }}
+  ]}}
 ```
+
+The "todos" array is OPTIONAL — only include it when there are concrete, actionable steps the user can take to fix the issue. Each todo must have: action, params, description, requires_restart.
+
+Available actions and their params:
+- set_env_var: {{"name": "VAR_NAME", "value": "VALUE", "scope": "user|machine"}}
+- install_package: {{"package": "PackageId", "tool": "winget|choco|pip"}}
+- run_command: {{"command": "cmd.exe /c command"}}
+- registry_edit: {{"key": "path", "value_name": "name", "value_data": "data", "hive": "HKCU|HKLM"}}
+- service_operation: {{"service": "name", "operation": "start|stop|restart"}}
+- restart_pc: {{"": ""}}
+- force_delete_file: {{"file_path": "C:\\full\\path\\to\\file"}}
+- run_sfc_scan: {{"": ""}}
+- run_dism_repair: {{"": ""}}
+- clear_temp_files: {{"": ""}}
+- reset_network_stack: {{"": ""}}
+- disable_startup_item: {{"name": "ItemName", "scope": "user|machine"}}
+- run_defender_scan: {{"": ""}}
+- run_chkdsk: {{"drive": "C:"}}
 
 ## Rules
 - Always use tools to investigate — don't guess
@@ -137,7 +427,15 @@ When you have enough information to answer the user, output:
 - Stop calling tools once you have enough info to help the user
 - If a tool fails, try a different approach
 - If the user's issue is unclear, use get_system_info() first to understand their system state
-- Never output anything other than the JSON format above"""
+- Never output anything other than the JSON format above
+
+## Handling Complex Issues
+- If the issue requires physical hardware repair (e.g., dead hard drive, faulty RAM stick, broken screen), say so clearly and suggest professional repair or replacement
+- If the issue is beyond what tools can fix (e.g., motherboard failure, PSU failure), give the user a clear explanation and suggest the next steps
+- For hardware issues that have software-based diagnostics (e.g., check disk health, test RAM), use the available tools first before concluding it's a hardware problem
+- For network issues, always test connectivity, DNS, and gateway before suggesting router resets
+- If you detect malware, suggest running a Defender scan and checking startup programs
+- For corrupted files that can't be deleted, use the force_delete_file tool as a last resort"""
 
 
 # ============================================================
@@ -540,9 +838,13 @@ class OpenAICompatibleProvider(LLMProvider):
 
     def call(self, messages: List[Dict], model: str = None) -> str:
         if not self.api_key:
+            _log("OpenAICompatibleProvider: no API key configured")
             raise RuntimeError("API key not configured")
 
         model = model or self.default_model
+        url = f"{self.base_url}/chat/completions"
+        _log(f"OpenAICompatibleProvider.call: model={model}, url={url}")
+
         payload = json.dumps({
             "model": model,
             "messages": messages,
@@ -551,8 +853,10 @@ class OpenAICompatibleProvider(LLMProvider):
             "stream": False
         }).encode()
 
+        _log(f"  Authorization: Bearer {self.api_key[:8]}... (full key length={len(self.api_key)})")
+
         req = urllib.request.Request(
-            f"{self.base_url}/chat/completions",
+            url,
             data=payload,
             headers={
                 "Content-Type": "application/json",
@@ -561,9 +865,62 @@ class OpenAICompatibleProvider(LLMProvider):
             },
             method="POST"
         )
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = json.loads(resp.read().decode())
-            return data["choices"][0]["message"]["content"]
+
+        status_code = 0
+        resp_text = ""
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                status_code = resp.status
+                resp_text = resp.read().decode(errors="replace")
+                _log(f"HTTP {status_code}, body len={len(resp_text)}")
+        except urllib.error.HTTPError as e:
+            status_code = e.code
+            body = e.read().decode(errors="replace")[:500]
+            resp_text = body
+            _log(f"HTTPError {e.code}: {body[:200]}")
+            raise ProviderError(f"API HTTP {e.code}", raw_response=body, status_code=e.code)
+        except urllib.error.URLError as e:
+            _log(f"URLError: {e.reason}")
+            raise ProviderError(f"API connection failed: {e.reason}", status_code=0)
+
+        # Parse response
+        try:
+            data = json.loads(resp_text)
+        except json.JSONDecodeError as e:
+            _log(f"JSON decode error: {e}, body={resp_text[:300]}")
+            raise ProviderError(f"API returned invalid JSON: {e}", raw_response=resp_text, status_code=status_code)
+
+        # Expected format: {"choices": [{"message": {"content": "..."}}]}
+        if isinstance(data, dict):
+            if "choices" in data:
+                choices = data["choices"]
+                if isinstance(choices, list) and len(choices) > 0:
+                    choice = choices[0]
+                    if isinstance(choice, dict):
+                        msg = choice.get("message") or choice.get("delta", {})
+                        if isinstance(msg, dict):
+                            content = msg.get("content", "")
+                            if content is not None:
+                                _log(f"Response OK, content len={len(content)}")
+                                return content
+                            _log(f"content is None in response: {resp_text[:300]}")
+                            raise ProviderError("API returned null content", raw_response=resp_text, status_code=status_code)
+                        _log(f"choices[0] has no message/delta: {resp_text[:300]}")
+                        raise ProviderError(f"Unexpected choice format: keys={list(choice.keys())}", raw_response=resp_text, status_code=status_code)
+                    _log(f"choices[0] not a dict: type={type(choice).__name__}")
+                    raise ProviderError(f"choices[0] type={type(choice).__name__}", raw_response=resp_text, status_code=status_code)
+                _log(f"choices is empty or not a list: type={type(choices).__name__}")
+                raise ProviderError(f"Empty/invalid choices", raw_response=resp_text, status_code=status_code)
+
+            if "error" in data:
+                err = data["error"]
+                err_msg = f"{err}" if isinstance(err, str) else f"{err.get('message', err)}"
+                err_name = err.get("name", "") if isinstance(err, dict) else ""
+                _log(f"API error: {err_name} - {err_msg}")
+                raise ProviderError(f"API error: {err_msg}", raw_response=resp_text, status_code=status_code)
+
+        _log(f"Unexpected response shape: {resp_text[:200]}")
+        raise ProviderError(f"Unexpected API response", raw_response=resp_text, status_code=status_code)
 
 
 # Preset configurations for popular providers
@@ -680,6 +1037,9 @@ class AgentLoop:
         try:
             return self._run_agent_loop(issue, step_callback)
         except Exception as e:
+            _log(f"LLM error: {e}\n{traceback.format_exc()}")
+            if isinstance(e, ProviderError):
+                _log(f"ProviderError details: status={e.status_code}, raw={e.raw_response[:500]}")
             if step_callback:
                 step_callback("thinking", f"LLM error: {e}. Falling back to rule engine.")
             if rule_based_engine:
@@ -698,10 +1058,12 @@ class AgentLoop:
     
     def _build_system_prompt(self) -> str:
         """Build the system prompt with tool descriptions"""
-        tool_descriptions = "\n".join(
-            f"- {t['name']}: {t['description']}" 
-            for t in TOOL_DEFINITIONS
-        )
+        parts = []
+        for t in TOOL_DEFINITIONS:
+            name = t.get("name", t.get("nmae", "?"))  # Guard against typo in name
+            desc = t.get("description", "?")
+            parts.append(f"- {name}: {desc}")
+        tool_descriptions = "\n".join(parts)
         return SYSTEM_PROMPT_TEMPLATE.format(tool_descriptions=tool_descriptions)
     
     def _run_agent_loop(self, issue: str, step_callback=None) -> Dict[str, Any]:
@@ -732,7 +1094,15 @@ class AgentLoop:
                     step_callback("thinking", f"Querying {provider_name}... (step {loop_count+1}/{max_loops})")
             
             # Get LLM response from the active provider
-            response = provider.call(messages, self.model)
+            _log(f"Loop {loop_count+1}: calling provider...")
+            try:
+                response = provider.call(messages, self.model)
+            except Exception as e:
+                _log(f"provider.call failed: {e}\n{traceback.format_exc()}")
+                if isinstance(e, ProviderError) and e.raw_response:
+                    _log(f"Raw response: {e.raw_response[:500]}")
+                raise
+            _log(f"Loop {loop_count+1}: got response len={len(response)}")
             content = response.strip()
             
             # Try to parse as JSON
@@ -799,29 +1169,32 @@ class AgentLoop:
         }
     
     def _parse_llm_output(self, text: str) -> Optional[Dict]:
-        """Parse JSON from LLM output, handling markdown code blocks"""
+        """Parse JSON from LLM output, handling markdown code blocks. Only returns dict or None."""
+        candidates = []
+
         # Try extracting from ```json ... ``` block first
         m = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
         if m:
-            try:
-                return json.loads(m.group(1).strip())
-            except json.JSONDecodeError:
-                pass
-        
-        # Try parsing whole text as JSON
-        try:
-            return json.loads(text.strip())
-        except json.JSONDecodeError:
-            pass
-        
+            candidates.append(m.group(1).strip())
+
+        # Try whole text
+        stripped = text.strip()
+        if stripped.startswith("{"):
+            candidates.append(stripped)
+
         # Try finding {...} with regex
         m = re.search(r'\{.*\}', text, re.DOTALL)
         if m:
+            candidates.append(m.group(0))
+
+        for candidate in candidates:
             try:
-                return json.loads(m.group(0))
+                result = json.loads(candidate)
+                if isinstance(result, dict):
+                    return result
             except json.JSONDecodeError:
-                pass
-        
+                continue
+
         return None
     
     def _call_ollama(self, messages: List[Dict]) -> str:
@@ -857,15 +1230,21 @@ class AgentLoop:
     
     def _build_analysis_result(self, parsed: Dict, tool_results: List[Dict]) -> Dict:
         """Build the final analysis result from LLM answer"""
+        todos = parsed.get("todos", [])
         return {
             "issue_type": "AI Analysis",
             "findings": parsed.get("findings", []),
             "recommendations": parsed.get("solutions", []),
+            "todos": todos,
             "reasoning": [f"Used {len(tool_results)} tool(s) to investigate"],
             "actions": [],
             "next_steps": [
                 "1. Try the solutions above",
                 "2. Let me know if the issue persists"
+            ] if not todos else [
+                "1. Review the suggested action steps below",
+                "2. Each step requires your permission before execution",
+                "3. Follow the prompts to apply fixes"
             ],
             "severity": self._estimate_severity(parsed.get("findings", [])),
             "llm_answer": parsed.get("answer", ""),
